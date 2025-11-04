@@ -17,7 +17,7 @@ stages:
       - job: TerraformJob
         displayName: 'Run Terraform'
         steps:
-          # Step 1: Navigate to the Terraform directory and Init
+          # Step 1: Terraform Init
           - script: |
               cd $(workingDirectory)
               terraform init
@@ -30,27 +30,18 @@ stages:
             displayName: 'Terraform Validate'
 
           # Step 3: Terraform Plan
-          - task: TerraformTaskV4@4
+          - script: |
+              cd $(workingDirectory)
+              terraform plan -out=tfplan
             displayName: 'Terraform Plan'
-            inputs:
-              provider: 'azurerm'
-              command: 'plan'
-              workingDirectory: '$(workingDirectory)'
-              environmentServiceNameAzureRM: 'epicbook-infra-connection'
-              terraformCLI: 'C:/Terraform/terraform.exe'  # <-- Set this to your actual path
 
           # Step 4: Terraform Apply
-          - task: TerraformTaskV4@4
+          - script: |
+              cd $(workingDirectory)
+              terraform apply -auto-approve tfplan
             displayName: 'Terraform Apply'
-            inputs:
-              provider: 'azurerm'
-              command: 'apply'
-              workingDirectory: '$(workingDirectory)'
-              environmentServiceNameAzureRM: 'epicbook-infra-connection'
-              commandOptions: '-auto-approve'
-              terraformCLI: 'C:/Terraform/terraform.exe'  # <-- Set this to your actual path
 
-          # Step 5: Display Outputs
+          # Step 5: Show Terraform Outputs
           - script: |
               cd $(workingDirectory)
               echo "=========================================="
