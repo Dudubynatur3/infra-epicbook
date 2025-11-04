@@ -1,3 +1,14 @@
+# ===================================================================
+# DATABASE CONFIGURATION - Azure MySQL Flexible Server
+# ===================================================================
+
+# Random suffix for unique MySQL name
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 # MySQL Flexible Server
 resource "azurerm_mysql_flexible_server" "main" {
   name                   = "epicbook-mysql-${random_string.suffix.result}"
@@ -5,21 +16,20 @@ resource "azurerm_mysql_flexible_server" "main" {
   location               = azurerm_resource_group.main.location
   administrator_login    = "mysqladmin"
   administrator_password = var.mysql_admin_password
-  sku_name              = "B_Standard_B1s"
-  version               = "8.0.21"
+  sku_name               = var.mysql_sku
+  version                = var.mysql_version
 
   storage {
     size_gb = 20
   }
 
   backup_retention_days = 7
-}
 
-# Random suffix for unique MySQL name
-resource "random_string" "suffix" {
-  length  = 8
-  special = false
-  upper   = false
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  depends_on = [azurerm_resource_group.main]
 }
 
 # MySQL Database
@@ -29,6 +39,8 @@ resource "azurerm_mysql_flexible_database" "epicbook" {
   server_name         = azurerm_mysql_flexible_server.main.name
   charset             = "utf8mb3"
   collation           = "utf8mb3_general_ci"
+
+  depends_on = [azurerm_mysql_flexible_server.main]
 }
 
 # Firewall Rule - Allow Azure Services
@@ -38,6 +50,8 @@ resource "azurerm_mysql_flexible_server_firewall_rule" "azure_services" {
   server_name         = azurerm_mysql_flexible_server.main.name
   start_ip_address    = "0.0.0.0"
   end_ip_address      = "0.0.0.0"
+
+  depends_on = [azurerm_mysql_flexible_server.main]
 }
 
 # Firewall Rule - Allow Backend Subnet
@@ -47,4 +61,15 @@ resource "azurerm_mysql_flexible_server_firewall_rule" "backend" {
   server_name         = azurerm_mysql_flexible_server.main.name
   start_ip_address    = "10.0.2.0"
   end_ip_address      = "10.0.2.255"
+
+  depends_on = [azurerm_mysql_flexible_server.main]
+}
+
+# ===================================================================
+# OUTPUTS
+# ===================================================================
+
+output "mysql_fqdn" {
+  description = "The FQDN of the Azure MySQL server"
+  value       = azurerm_mysql_flexible_server.main.fqdn
 }
