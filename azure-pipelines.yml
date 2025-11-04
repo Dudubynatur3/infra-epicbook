@@ -18,7 +18,7 @@ variables:
   - name: ARM_TENANT_ID
     value: '92847201-d5b8-45af-8606-3e1d0d0568e2'
   - name: ARM_SUBSCRIPTION_ID
-    value: '<your-subscription-id>' # Replace with your Azure subscription ID
+    value: '4498449e-cbcd-452c-9a04-69e911ee0a' # Replace with your Azure subscription ID
 
 stages:
   - stage: Terraform
