@@ -8,7 +8,7 @@ pool:
 
 variables:
   - name: workingDirectory
-    value: '$(System.DefaultWorkingDirectory)'
+    value: '$(System.DefaultWorkingDirectory)/infra-epicbook'
 
 stages:
   - stage: Terraform
@@ -17,19 +17,19 @@ stages:
       - job: TerraformJob
         displayName: 'Run Terraform'
         steps:
-          # Step 1: Terraform Init (using script to avoid backend requirement)
+          # Step 1: Navigate to the Terraform directory and Init
           - script: |
+              cd $(workingDirectory)
               terraform init
             displayName: 'Terraform Init'
-            workingDirectory: '$(workingDirectory)'
 
           # Step 2: Terraform Validate
           - script: |
+              cd $(workingDirectory)
               terraform validate
             displayName: 'Terraform Validate'
-            workingDirectory: '$(workingDirectory)'
 
-          # Step 3: Terraform Plan (using task for Azure auth)
+          # Step 3: Terraform Plan
           - task: TerraformTaskV4@4
             displayName: 'Terraform Plan'
             inputs:
@@ -38,7 +38,7 @@ stages:
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
 
-          # Step 4: Terraform Apply (using task for Azure auth)
+          # Step 4: Terraform Apply
           - task: TerraformTaskV4@4
             displayName: 'Terraform Apply'
             inputs:
@@ -48,8 +48,9 @@ stages:
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
               commandOptions: '-auto-approve'
 
-          # Step 5: Display Terraform Outputs
+          # Step 5: Display Outputs
           - script: |
+              cd $(workingDirectory)
               echo "=========================================="
               echo "         TERRAFORM OUTPUTS"
               echo "=========================================="
@@ -65,4 +66,3 @@ stages:
               terraform output -raw mysql_fqdn || echo "Not found"
               echo "=========================================="
             displayName: 'Show Terraform Outputs'
-            workingDirectory: '$(workingDirectory)'
