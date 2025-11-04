@@ -4,11 +4,7 @@ trigger:
       - main
 
 pool:
-<<<<<<< HEAD
-  Name: 'Default'
-=======
-  Name: 'Default' 
->>>>>>> 6f52f7ef5ed96114bceccedbffee7e74b2f1c3c3
+  name: 'Default'
 
 variables:
   - name: workingDirectory
@@ -81,4 +77,3 @@ stages:
               echo "=========================================="
             displayName: 'Show Terraform Outputs'
             workingDirectory: '$(workingDirectory)'
-
