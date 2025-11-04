@@ -10,6 +10,16 @@ variables:
   - name: workingDirectory
     value: '$(System.DefaultWorkingDirectory)/infra-epicbook'
 
+  # Service Principal credentials for Terraform
+  - name: ARM_CLIENT_ID
+    value: '526b8d33-950f-470e-8f22-dfff02a54aa4'
+  - name: ARM_CLIENT_SECRET
+    value: '2eG8Q-PRJRW39wNSmG7yqtzeIcG2~k0hXpjL6csg'
+  - name: ARM_TENANT_ID
+    value: '92847201-d5b8-45af-8606-3e1d0d0568e2'
+  - name: ARM_SUBSCRIPTION_ID
+    value: '<your-subscription-id>' # Replace with your Azure subscription ID
+
 stages:
   - stage: Terraform
     displayName: 'Provision Infrastructure'
@@ -41,7 +51,7 @@ stages:
               terraform apply -auto-approve tfplan
             displayName: 'Terraform Apply'
 
-          # Step 5: Show Terraform Outputs
+          # Step 5: Display Outputs
           - script: |
               cd $(workingDirectory)
               echo "=========================================="
