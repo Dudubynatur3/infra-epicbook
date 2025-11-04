@@ -4,7 +4,11 @@ trigger:
       - main
 
 pool:
+<<<<<<< HEAD
   Name: 'Default'
+=======
+  Name: 'Default' 
+>>>>>>> 6f52f7ef5ed96114bceccedbffee7e74b2f1c3c3
 
 variables:
   - name: workingDirectory
@@ -17,11 +21,13 @@ stages:
       - job: TerraformJob
         displayName: 'Run Terraform'
         steps:
+          # Step 1: Install Terraform
           - task: TerraformInstaller@0
             displayName: 'Install Terraform'
             inputs:
               terraformVersion: 'latest'
 
+          # Step 2: Terraform Init
           - task: TerraformTaskV4@4
             displayName: 'Terraform Init'
             inputs:
@@ -30,6 +36,7 @@ stages:
               workingDirectory: '$(workingDirectory)'
               backendServiceArm: 'epicbook-infra-connection'
 
+          # Step 3: Terraform Validate
           - task: TerraformTaskV4@4
             displayName: 'Terraform Validate'
             inputs:
@@ -37,24 +44,41 @@ stages:
               command: 'validate'
               workingDirectory: '$(workingDirectory)'
 
+          # Step 4: Terraform Plan
           - task: TerraformTaskV4@4
             displayName: 'Terraform Plan'
             inputs:
               provider: 'azurerm'
               command: 'plan'
               workingDirectory: '$(workingDirectory)'
-              environmentServiceNameAzureRM: 'azure-terraform-connection'
+              environmentServiceNameAzureRM: 'epicbook-infra-connection'
 
+          # Step 5: Terraform Apply
           - task: TerraformTaskV4@4
             displayName: 'Terraform Apply'
             inputs:
               provider: 'azurerm'
               command: 'apply'
               workingDirectory: '$(workingDirectory)'
-              environmentServiceNameAzureRM: 'azure-terraform-connection'
+              environmentServiceNameAzureRM: 'epicbook-infra-connection'
+              commandOptions: '-auto-approve'
 
+          # Step 6: Display Terraform Outputs
           - script: |
-              echo "========== TERRAFORM OUTPUTS =========="
+              echo "=========================================="
+              echo "         TERRAFORM OUTPUTS"
+              echo "=========================================="
               terraform output -json
+              echo ""
+              echo "📍 Frontend Public IP:"
+              terraform output -raw frontend_public_ip || echo "Not found"
+              echo ""
+              echo "📍 Backend Public IP:"
+              terraform output -raw backend_public_ip || echo "Not found"
+              echo ""
+              echo "📍 MySQL FQDN:"
+              terraform output -raw mysql_fqdn || echo "Not found"
+              echo "=========================================="
             displayName: 'Show Terraform Outputs'
             workingDirectory: '$(workingDirectory)'
+
