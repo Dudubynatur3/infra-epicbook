@@ -68,8 +68,3 @@ resource "azurerm_mysql_flexible_server_firewall_rule" "backend" {
 # ===================================================================
 # OUTPUTS
 # ===================================================================
-
-output "mysql_fqdn" {
-  description = "The FQDN of the Azure MySQL server"
-  value       = azurerm_mysql_flexible_server.main.fqdn
-}
