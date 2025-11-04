@@ -4,11 +4,7 @@ trigger:
       - main
 
 pool:
-<<<<<<< HEAD
-  Name: 'Default'
-=======
-  Name: 'Default' 
->>>>>>> 6f52f7ef5ed96114bceccedbffee7e74b2f1c3c3
+  name: 'Default'
 
 variables:
   - name: workingDirectory
@@ -21,22 +17,15 @@ stages:
       - job: TerraformJob
         displayName: 'Run Terraform'
         steps:
-          # Step 1: Install Terraform
-          - task: TerraformInstaller@0
-            displayName: 'Install Terraform'
-            inputs:
-              terraformVersion: 'latest'
-
-          # Step 2: Terraform Init
+          # Step 1: Terraform Init (local state - no backend)
           - task: TerraformTaskV4@4
             displayName: 'Terraform Init'
             inputs:
               provider: 'azurerm'
               command: 'init'
               workingDirectory: '$(workingDirectory)'
-              backendServiceArm: 'epicbook-infra-connection'
 
-          # Step 3: Terraform Validate
+          # Step 2: Terraform Validate
           - task: TerraformTaskV4@4
             displayName: 'Terraform Validate'
             inputs:
@@ -44,7 +33,7 @@ stages:
               command: 'validate'
               workingDirectory: '$(workingDirectory)'
 
-          # Step 4: Terraform Plan
+          # Step 3: Terraform Plan
           - task: TerraformTaskV4@4
             displayName: 'Terraform Plan'
             inputs:
@@ -53,7 +42,7 @@ stages:
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
 
-          # Step 5: Terraform Apply
+          # Step 4: Terraform Apply
           - task: TerraformTaskV4@4
             displayName: 'Terraform Apply'
             inputs:
@@ -63,7 +52,7 @@ stages:
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
               commandOptions: '-auto-approve'
 
-          # Step 6: Display Terraform Outputs
+          # Step 5: Display Terraform Outputs
           - script: |
               echo "=========================================="
               echo "         TERRAFORM OUTPUTS"
@@ -81,4 +70,3 @@ stages:
               echo "=========================================="
             displayName: 'Show Terraform Outputs'
             workingDirectory: '$(workingDirectory)'
-
