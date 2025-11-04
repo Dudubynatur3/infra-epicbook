@@ -4,7 +4,7 @@ trigger:
       - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  Name: 'Default'
 
 variables:
   - name: workingDirectory
