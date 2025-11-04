@@ -37,6 +37,7 @@ stages:
               command: 'plan'
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
+              terraformCLI: 'C:/Terraform/terraform.exe'  # <-- Set this to your actual path
 
           # Step 4: Terraform Apply
           - task: TerraformTaskV4@4
@@ -47,6 +48,7 @@ stages:
               workingDirectory: '$(workingDirectory)'
               environmentServiceNameAzureRM: 'epicbook-infra-connection'
               commandOptions: '-auto-approve'
+              terraformCLI: 'C:/Terraform/terraform.exe'  # <-- Set this to your actual path
 
           # Step 5: Display Outputs
           - script: |
@@ -56,13 +58,13 @@ stages:
               echo "=========================================="
               terraform output -json
               echo ""
-              echo "📍 Frontend Public IP:"
+              echo "📍 Frontend Public IP:" 
               terraform output -raw frontend_public_ip || echo "Not found"
               echo ""
-              echo "📍 Backend Public IP:"
+              echo "📍 Backend Public IP:" 
               terraform output -raw backend_public_ip || echo "Not found"
               echo ""
-              echo "📍 MySQL FQDN:"
+              echo "📍 MySQL FQDN:" 
               terraform output -raw mysql_fqdn || echo "Not found"
               echo "=========================================="
             displayName: 'Show Terraform Outputs'
