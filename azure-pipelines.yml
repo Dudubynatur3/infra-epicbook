@@ -81,8 +81,8 @@ stages:
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
                   -var="admin_ssh_public_key=${SSH_PUBLIC_KEY}" \
-                  -var="my_sql_admin_username=${MY_SQL_ADMIN_USERNAME}" \
-                  -var="my_sql_admin_password=${MY_SQL_ADMIN_PASSWORD}" \
+                  -var="mysql_admin_username=${MY_SQL_ADMIN_USERNAME}" \
+                  -var="mysql_admin_password=${MY_SQL_ADMIN_PASSWORD}" \
                   -out=tfplan
             env:
               MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
