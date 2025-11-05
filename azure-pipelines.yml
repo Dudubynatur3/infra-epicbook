@@ -8,17 +8,7 @@ pool:
 
 variables:
   - name: workingDirectory
-    value: '$(System.DefaultWorkingDirectory)/infra-epicbook'
-
-  # Service Principal credentials for Terraform
-  - name: ARM_CLIENT_ID
-    value: '526b8d33-950f-470e-8f22-dfff02a54aa4'
-  - name: ARM_CLIENT_SECRET
-    value: '2eG8Q-PRJRW39wNSmG7yqtzeIcG2~k0hXpjL6csg'
-  - name: ARM_TENANT_ID
-    value: '92847201-d5b8-45af-8606-3e1d0d0568e2'
-  - name: ARM_SUBSCRIPTION_ID
-    value: '4498449e-cbcd-452c-9a04-69e911ee0a' # Replace with your Azure subscription ID
+    value: '$(System.DefaultWorkingDirectory)'
 
 stages:
   - stage: Terraform
@@ -27,45 +17,127 @@ stages:
       - job: TerraformJob
         displayName: 'Run Terraform'
         steps:
-          # Step 1: Terraform Init
-          - script: |
-              cd $(workingDirectory)
-              terraform init
+          # ✅ NEW: Download SSH Public Key from Secure Files
+          - task: DownloadSecureFile@1
+            name: sshPublicKey
+            inputs:
+              secureFile: 'id_rsa.pub'
+            displayName: 'Download SSH Public Key from Secure Files'
+
+          # ✅ NEW: Read SSH Key Content into Variable
+          - bash: |
+              echo "Reading SSH public key content..."
+              SSH_KEY_CONTENT=$(cat $(sshPublicKey.secureFilePath))
+              echo "SSH Key loaded (length: ${#SSH_KEY_CONTENT} characters)"
+              echo "##vso[task.setvariable variable=SSH_PUBLIC_KEY;issecret=true]$SSH_KEY_CONTENT"
+            displayName: 'Load SSH Public Key into Variable'
+
+          # ✅ UPDATED: Terraform Init with Azure CLI authentication
+          - task: AzureCLI@2
             displayName: 'Terraform Init'
+            inputs:
+              azureSubscription: 'epicbook-infra-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: '$(workingDirectory)'
+              inlineScript: |
+                echo "Initializing Terraform..."
+                terraform init -input=false
 
-          # Step 2: Terraform Validate
-          - script: |
-              cd $(workingDirectory)
-              terraform validate
+          # ✅ UPDATED: Terraform Validate with Azure CLI authentication
+          - task: AzureCLI@2
             displayName: 'Terraform Validate'
+            inputs:
+              azureSubscription: 'epicbook-infra-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: '$(workingDirectory)'
+              inlineScript: |
+                echo "Validating Terraform configuration..."
+                terraform validate
 
-          # Step 3: Terraform Plan
-          - script: |
-              cd $(workingDirectory)
-              terraform plan -out=tfplan
+          # ✅ UPDATED: Terraform Plan with SSH Key Variable
+          - task: AzureCLI@2
             displayName: 'Terraform Plan'
+            inputs:
+              azureSubscription: 'epicbook-infra-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: '$(workingDirectory)'
+              inlineScript: |
+                echo "Creating Terraform execution plan..."
+                terraform plan -input=false \
+                  -var="admin_ssh_public_key=$(SSH_PUBLIC_KEY)" \
+                  -out=tfplan
 
-          # Step 4: Terraform Apply
-          - script: |
-              cd $(workingDirectory)
-              terraform apply -auto-approve tfplan
+          # ✅ UPDATED: Terraform Apply with SSH Key Variable
+          - task: AzureCLI@2
             displayName: 'Terraform Apply'
+            inputs:
+              azureSubscription: 'epicbook-infra-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: '$(workingDirectory)'
+              inlineScript: |
+                echo "Applying Terraform configuration..."
+                terraform apply -input=false -auto-approve tfplan
 
-          # Step 5: Display Outputs
-          - script: |
-              cd $(workingDirectory)
-              echo "=========================================="
-              echo "         TERRAFORM OUTPUTS"
-              echo "=========================================="
-              terraform output -json
-              echo ""
-              echo "📍 Frontend Public IP:" 
-              terraform output -raw frontend_public_ip || echo "Not found"
-              echo ""
-              echo "📍 Backend Public IP:" 
-              terraform output -raw backend_public_ip || echo "Not found"
-              echo ""
-              echo "📍 MySQL FQDN:" 
-              terraform output -raw mysql_fqdn || echo "Not found"
-              echo "=========================================="
+          # ✅ UPDATED: Show Outputs
+          - task: AzureCLI@2
             displayName: 'Show Terraform Outputs'
+            inputs:
+              azureSubscription: 'epicbook-infra-connection'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              workingDirectory: '$(workingDirectory)'
+              inlineScript: |
+                echo "=========================================="
+                echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
+                echo "=========================================="
+                echo ""
+                
+                # Save outputs to JSON
+                terraform output -json | tee terraform-outputs.json
+                
+                echo ""
+                echo "=========================================="
+                echo "   📋 COPY THESE FOR YOUR APP PIPELINE:"
+                echo "=========================================="
+                echo ""
+                
+                # Display individual outputs
+                FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "Not available")
+                BACKEND_IP=$(terraform output -raw backend_public_ip 2>/dev/null || echo "Not available")
+                MYSQL_FQDN=$(terraform output -raw mysql_fqdn 2>/dev/null || echo "Not available")
+                
+                echo "📍 Frontend Public IP: $FRONTEND_IP"
+                echo "📍 Backend Public IP: $BACKEND_IP"
+                echo "📍 MySQL FQDN: $MYSQL_FQDN"
+                echo ""
+                echo "=========================================="
+                echo "      UPDATE YOUR APP REPOSITORY WITH:"
+                echo "=========================================="
+                echo ""
+                echo "1. ansible/inventory.ini:"
+                echo "   [frontend]"
+                echo "   $FRONTEND_IP"
+                echo ""
+                echo "   [backend]"
+                echo "   $BACKEND_IP"
+                echo ""
+                echo "2. ansible/group_vars/backend.yml:"
+                echo "   db_host: $MYSQL_FQDN"
+                echo ""
+                echo "3. ansible/group_vars/frontend.yml:"
+                echo "   backend_api_url: http://$BACKEND_IP:5000"
+                echo ""
+                echo "=========================================="
+
+          # ✅ NEW: Publish Outputs as Artifact
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Terraform Outputs'
+            inputs:
+              PathtoPublish: '$(workingDirectory)/terraform-outputs.json'
+              ArtifactName: 'terraform-outputs'
+              publishLocation: 'Container'
+            condition: succeededOrFailed()

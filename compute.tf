@@ -56,7 +56,7 @@ resource "azurerm_network_interface_security_group_association" "backend" {
   network_security_group_id = azurerm_network_security_group.backend.id
 }
 
-# Frontend VM
+# ✅ FIXED: Frontend VM - Using variable instead of file()
 resource "azurerm_linux_virtual_machine" "frontend" {
   name                = "epicbook-frontend"
   resource_group_name = azurerm_resource_group.main.name
@@ -70,8 +70,10 @@ resource "azurerm_linux_virtual_machine" "frontend" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file(var.ssh_public_key_path)
+    public_key = var.admin_ssh_public_key  # ✅ CHANGED FROM file() to variable
   }
+
+  disable_password_authentication = true
 
   os_disk {
     caching              = "ReadWrite"
@@ -84,9 +86,15 @@ resource "azurerm_linux_virtual_machine" "frontend" {
     sku       = "22_04-lts"
     version   = "latest"
   }
+
+  tags = {
+    Environment = "Dev"
+    Project     = "EpicBook"
+    Tier        = "Frontend"
+  }
 }
 
-# Backend VM
+# ✅ FIXED: Backend VM - Using variable instead of file()
 resource "azurerm_linux_virtual_machine" "backend" {
   name                = "epicbook-backend"
   resource_group_name = azurerm_resource_group.main.name
@@ -100,8 +108,10 @@ resource "azurerm_linux_virtual_machine" "backend" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file(var.ssh_public_key_path)
+    public_key = var.admin_ssh_public_key  # ✅ CHANGED FROM file() to variable
   }
+
+  disable_password_authentication = true
 
   os_disk {
     caching              = "ReadWrite"
@@ -113,5 +123,11 @@ resource "azurerm_linux_virtual_machine" "backend" {
     offer     = "0001-com-ubuntu-server-jammy"
     sku       = "22_04-lts"
     version   = "latest"
+  }
+
+  tags = {
+    Environment = "Dev"
+    Project     = "EpicBook"
+    Tier        = "Backend"
   }
 }
