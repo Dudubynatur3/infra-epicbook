@@ -7,18 +7,14 @@ trigger:
       - main
 
 stages:
+
 - stage: Terraform
   displayName: 'Provision Infrastructure'
   jobs:
   - job: Terraform_Apply
     displayName: 'Terraform Apply'
     pool:
-      name: 'Default'  # your self-hosted agent
-    variables:
-      - name: MYSQL_ADMIN_USERNAME
-        value: '$(MYSQL_ADMIN_USERNAME)'   # already created in pipeline variables
-      - name: MYSQL_ADMIN_PASSWORD
-        value: '$(MYSQL_ADMIN_PASSWORD)'   # marked as secret
+      name: 'Default'   # Your self-hosted agent
 
     steps:
 
@@ -30,10 +26,10 @@ stages:
     - script: |
         echo "Copying SSH public key into Terraform module"
 
-        mkdir -p ~/.ssh
-        cp $(download_ssh_key.secureFilePath) ~/.ssh/id_rsa.pub
+        # Ensure module folder exists
+        mkdir -p terraform/modules/compute
 
-        # Now copy into Terraform module path
+        # Copy the public key
         cp $(download_ssh_key.secureFilePath) terraform/modules/compute/id_rsa.pub
 
         echo "Listing contents of terraform/modules/compute/"
@@ -41,28 +37,21 @@ stages:
       displayName: 'Extract SSH Public Key for Terraform'
 
     - task: AzureCLI@2
-      displayName: 'Terraform Init / Plan / Apply'
       inputs:
-        azureSubscription: 'epicbook-infra-connection'
+        azureSubscription: 'it-azure-connection'
         scriptType: bash
         scriptLocation: inlineScript
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        workingDirectory: $(System.DefaultWorkingDirectory)/terraform
         inlineScript: |
-          echo "##[group]Terraform Init"
-          terraform init -input=false
-          echo "##[endgroup]"
+          echo "##[group]Terraform Init/Plan/Apply"
 
-          echo "##[group]Terraform Plan"
-          terraform plan -input=false \
-            -var "mysql_admin_username=$MYSQL_ADMIN_USERNAME" \
-            -var "mysql_admin_password=$MYSQL_ADMIN_PASSWORD" \
-            -var "admin_ssh_public_key=$(cat terraform/modules/compute/id_rsa.pub)" \
-            -out=tfplan
-          echo "##[endgroup]"
+          # Export variables so Terraform can see them
+          export TF_VAR_mysql_admin_username=$MYSQL_ADMIN_USERNAME
+          export TF_VAR_mysql_admin_password=$MYSQL_ADMIN_PASSWORD
 
-          echo "##[group]Terraform Apply"
-          terraform apply -input=false -auto-approve tfplan
+          terraform init -input=false 
+          terraform plan -input=false -var-file="envs/dev.tfvars"
+          terraform apply -input=false -auto-approve -var-file="envs/dev.tfvars"
+
           echo "##[endgroup]"
-      env:
-        MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-        MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+      displayName: 'Terraform Apply'
