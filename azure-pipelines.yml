@@ -38,7 +38,7 @@ stages:
 
     - task: AzureCLI@2
       inputs:
-        azureSubscription: 'it-azure-connection'
+        azureSubscription: 'epicbook-infra-connection'
         scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(System.DefaultWorkingDirectory)/terraform
