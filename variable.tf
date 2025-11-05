@@ -16,7 +16,6 @@ variable "admin_username" {
   default     = "azureuser"
 }
 
-# ✅ FIXED: Changed from file path to actual key content
 variable "admin_ssh_public_key" {
   description = "SSH public key content for VM access"
   type        = string
