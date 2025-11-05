@@ -79,10 +79,12 @@ stages:
               workingDirectory: '$(workingDirectory)'
               inlineScript: |
                 echo "Creating Terraform execution plan..."
+                
+                # Use environment variables directly with bash variable expansion
                 terraform plan -input=false \
-                  -var="admin_ssh_public_key=${SSH_PUBLIC_KEY}" \
-                  -var="mysql_admin_username=${MY_SQL_ADMIN_USERNAME}" \
-                  -var="mysql_admin_password=${MY_SQL_ADMIN_PASSWORD}" \
+                  -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
+                  -var="mysql_admin_username=$MY_SQL_ADMIN_USERNAME" \
+                  -var="mysql_admin_password=$MY_SQL_ADMIN_PASSWORD" \
                   -out=tfplan
             env:
               MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
