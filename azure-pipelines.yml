@@ -41,8 +41,8 @@ stages:
               echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
             displayName: 'Debug: Variable Presence Check'
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MYSQL_ADMIN_USERNAME: $(my_sql_admin_username)
+              MYSQL_ADMIN_PASSWORD: $(my_sql_admin_password)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # 🚀 Terraform Init
@@ -85,8 +85,8 @@ stages:
                   -var="mysql_admin_password=${MYSQL_ADMIN_PASSWORD}" \
                   -out=tfplan
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MYSQL_ADMIN_USERNAME: $(my_sql_admin_username)
+              MYSQL_ADMIN_PASSWORD: $(my_sql_admin_password)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # ⚙️ Terraform Apply
@@ -101,8 +101,8 @@ stages:
                 echo "Applying Terraform configuration..."
                 terraform apply -input=false -auto-approve tfplan
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MYSQL_ADMIN_USERNAME: $(my_sql_admin_username)
+              MYSQL_ADMIN_PASSWORD: $(my_sql_admin_password)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # 📤 Show Terraform Outputs
