@@ -36,13 +36,13 @@ stages:
           # 🔍 Debug variable presence
           - bash: |
               echo "DEBUG: checking variable lengths (0 = missing)"
-              echo "MYSQL_ADMIN_USERNAME length: ${#MYSQL_ADMIN_USERNAME}"
-              echo "MYSQL_ADMIN_PASSWORD length: ${#MYSQL_ADMIN_PASSWORD}"
+              echo "MY_SQL_ADMIN_USERNAME length: ${#MY_SQL_ADMIN_USERNAME}"
+              echo "MY_SQL_ADMIN_PASSWORD length: ${#MY_SQL_ADMIN_PASSWORD}"
               echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
             displayName: 'Debug: Variable Presence Check'
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
+              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # 🚀 Terraform Init
@@ -81,12 +81,12 @@ stages:
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
                   -var="admin_ssh_public_key=${SSH_PUBLIC_KEY}" \
-                  -var="mysql_admin_username=${MYSQL_ADMIN_USERNAME}" \
-                  -var="mysql_admin_password=${MYSQL_ADMIN_PASSWORD}" \
+                  -var="my_sql_admin_username=${MY_SQL_ADMIN_USERNAME}" \
+                  -var="my_sql_admin_password=${MY_SQL_ADMIN_PASSWORD}" \
                   -out=tfplan
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
+              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # ⚙️ Terraform Apply
@@ -101,8 +101,8 @@ stages:
                 echo "Applying Terraform configuration..."
                 terraform apply -input=false -auto-approve tfplan
             env:
-              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
-              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
+              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # 📤 Show Terraform Outputs
