@@ -118,7 +118,13 @@ stages:
                 echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
                 echo "=========================================="
                 echo ""
-                terraform output -json | tee terraform-outputs.json
+
+                if terraform output -json > terraform-outputs.json 2>/dev/null; then
+                  echo "✅ Terraform outputs file generated."
+                else
+                  echo "{}" > terraform-outputs.json
+                  echo "⚠️ No outputs found — empty file created instead."
+                fi
 
                 FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "N/A")
                 BACKEND_IP=$(terraform output -raw backend_public_ip 2>/dev/null || echo "N/A")
@@ -132,7 +138,7 @@ stages:
                 echo "   Update ansible/inventory.ini & vars"
                 echo "=========================================="
 
-          # 🗂️ Publish Terraform Outputs Artifact
+          # 📦 Publish Terraform Outputs
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Terraform Outputs'
             inputs:
