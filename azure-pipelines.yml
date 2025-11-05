@@ -18,148 +18,73 @@ stages:
         displayName: 'Run Terraform Deployment'
         steps:
 
-          # 🔐 Download SSH Public Key
+          # Download SSH Public Key
           - task: DownloadSecureFile@1
             name: sshPublicKey
             inputs:
               secureFile: 'id_rsa.pub'
             displayName: 'Download SSH Public Key'
 
-          # 🧩 Load SSH Public Key into Variable
+          # Copy SSH Public Key into Terraform module
           - bash: |
-              echo "Reading SSH public key content..."
-              SSH_KEY_CONTENT=$(cat $(sshPublicKey.secureFilePath))
-              echo "SSH Key loaded (length: ${#SSH_KEY_CONTENT} characters)"
-              echo "##vso[task.setvariable variable=SSH_PUBLIC_KEY;issecret=true]$SSH_KEY_CONTENT"
-            displayName: 'Load SSH Key into Variable'
+              mkdir -p ~/.ssh
+              cp $(sshPublicKey.secureFilePath) ~/.ssh/id_rsa.pub
+              cp $(sshPublicKey.secureFilePath) terraform/modules/compute/id_rsa.pub
+              ls -al terraform/modules/compute/
+            displayName: 'Place SSH Public Key'
 
-          # 🔍 Debug variable presence
-          - bash: |
-              echo "DEBUG: checking variable lengths (0 = missing)"
-              echo "MY_SQL_ADMIN_USERNAME length: ${#MY_SQL_ADMIN_USERNAME}"
-              echo "MY_SQL_ADMIN_PASSWORD length: ${#MY_SQL_ADMIN_PASSWORD}"
-              echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
-            displayName: 'Debug: Variable Presence Check'
-            env:
-              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
-              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
-              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
-
-          # 🛡 Pre-flight: Validate MySQL Admin Username
-          - bash: |
-              echo "Validating MySQL admin username..."
-              USERNAME="$MY_SQL_ADMIN_USERNAME"
-              # Must contain only letters, numbers, underscores, max 16 chars
-              if [[ ! "$USERNAME" =~ ^[a-zA-Z0-9_]{1,16}$ ]]; then
-                echo "❌ Invalid MySQL admin username: '$USERNAME'"
-                echo "Username must only contain letters, numbers, underscores, max 16 characters."
-                exit 1
-              fi
-              echo "✅ MySQL admin username is valid: '$USERNAME'"
-            displayName: 'Pre-flight: Validate MySQL Admin Username'
-            env:
-              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
-
-          # 🚀 Terraform Init
+          # Terraform Init
           - task: AzureCLI@2
             displayName: 'Terraform Init'
             inputs:
               azureSubscription: 'epicbook-infra-connection'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              workingDirectory: '$(workingDirectory)'
+              workingDirectory: '$(workingDirectory)/terraform'
               inlineScript: |
-                echo "Initializing Terraform..."
                 terraform init -input=false
 
-          # ✅ Validate Terraform Config
-          - task: AzureCLI@2
-            displayName: 'Terraform Validate'
-            inputs:
-              azureSubscription: 'epicbook-infra-connection'
-              scriptType: 'bash'
-              scriptLocation: 'inlineScript'
-              workingDirectory: '$(workingDirectory)'
-              inlineScript: |
-                echo "Validating Terraform configuration..."
-                terraform validate
-
-          # 🧾 Terraform Plan
+          # Terraform Plan
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
             inputs:
               azureSubscription: 'epicbook-infra-connection'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              workingDirectory: '$(workingDirectory)'
+              workingDirectory: '$(workingDirectory)/terraform'
               inlineScript: |
-                echo "Creating Terraform execution plan..."
-                
-                # Pass variables to Terraform
                 terraform plan -input=false \
-                  -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
-                  -var="mysql_admin_username=$MY_SQL_ADMIN_USERNAME" \
-                  -var="mysql_admin_password=$MY_SQL_ADMIN_PASSWORD" \
+                  -var "mysql_admin_username=$MYSQL_ADMIN_USERNAME" \
+                  -var "mysql_admin_password=$MYSQL_ADMIN_PASSWORD" \
+                  -var "admin_ssh_public_key=$(cat terraform/modules/compute/id_rsa.pub)" \
                   -out=tfplan
             env:
-              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
-              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
-              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
+              MYSQL_ADMIN_USERNAME: '$(MYSQL_ADMIN_USERNAME)'
+              MYSQL_ADMIN_PASSWORD: '$(MYSQL_ADMIN_PASSWORD)'
 
-          # ⚙️ Terraform Apply
+          # Terraform Apply
           - task: AzureCLI@2
             displayName: 'Terraform Apply'
             inputs:
               azureSubscription: 'epicbook-infra-connection'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              workingDirectory: '$(workingDirectory)'
+              workingDirectory: '$(workingDirectory)/terraform'
               inlineScript: |
-                echo "Applying Terraform configuration..."
                 terraform apply -input=false -auto-approve tfplan
             env:
-              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
-              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
-              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
+              MYSQL_ADMIN_USERNAME: '$(MYSQL_ADMIN_USERNAME)'
+              MYSQL_ADMIN_PASSWORD: '$(MYSQL_ADMIN_PASSWORD)'
 
-          # 📤 Show Terraform Outputs
+          # Show Terraform Outputs
           - task: AzureCLI@2
-            displayName: 'Show Terraform Outputs'
+            displayName: 'Terraform Outputs'
             inputs:
               azureSubscription: 'epicbook-infra-connection'
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
-              workingDirectory: '$(workingDirectory)'
+              workingDirectory: '$(workingDirectory)/terraform'
               inlineScript: |
-                echo "=========================================="
-                echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
-                echo "=========================================="
-                echo ""
-
-                if terraform output -json > terraform-outputs.json 2>/dev/null; then
-                  echo "✅ Terraform outputs file generated."
-                else
-                  echo "{}" > terraform-outputs.json
-                  echo "⚠️ No outputs found — empty file created instead."
-                fi
-
-                FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "N/A")
-                BACKEND_IP=$(terraform output -raw backend_public_ip 2>/dev/null || echo "N/A")
-                MYSQL_FQDN=$(terraform output -raw mysql_fqdn 2>/dev/null || echo "N/A")
-
-                echo "📍 Frontend Public IP: $FRONTEND_IP"
-                echo "📍 Backend Public IP: $BACKEND_IP"
-                echo "📍 MySQL FQDN: $MYSQL_FQDN"
-                echo ""
-                echo "=========================================="
-                echo "   Update ansible/inventory.ini & vars"
-                echo "=========================================="
-
-          # 📦 Publish Terraform Outputs
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish Terraform Outputs'
-            inputs:
-              PathtoPublish: '$(workingDirectory)/terraform-outputs.json'
-              ArtifactName: 'terraform-outputs'
-              publishLocation: 'Container'
-            condition: succeededOrFailed()
+                echo "Frontend IP: $(terraform output -raw frontend_public_ip)"
+                echo "Backend IP: $(terraform output -raw backend_public_ip)"
+                echo "MySQL FQDN: $(terraform output -raw mysql_fqdn)"
