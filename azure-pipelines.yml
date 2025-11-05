@@ -18,7 +18,7 @@ stages:
         displayName: 'Run Terraform Deployment'
         steps:
 
-          # 🔐 Download SSH Public Key from Secure Files (keeps your existing secure file usage)
+          # 🔐 Download SSH Public Key
           - task: DownloadSecureFile@1
             name: sshPublicKey
             inputs:
@@ -33,8 +33,7 @@ stages:
               echo "##vso[task.setvariable variable=SSH_PUBLIC_KEY;issecret=true]$SSH_KEY_CONTENT"
             displayName: 'Load SSH Key into Variable'
 
-          # 🔍 DEBUG: confirm pipeline variables are present (prints lengths only)
-          # (temporary — remove after first successful run)
+          # 🔍 Debug variable presence
           - bash: |
               echo "DEBUG: checking variable lengths (0 = missing)"
               echo "MYSQL_ADMIN_USERNAME length: ${#MYSQL_ADMIN_USERNAME}"
@@ -42,11 +41,11 @@ stages:
               echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
             displayName: 'Debug: Variable Presence Check'
             env:
-              MYSQL_ADMIN_USERNAME: $(mysql_admin_username)
-              MYSQL_ADMIN_PASSWORD: $(mysql_admin_password)
+              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
+              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
               SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
-          # 🚀 Terraform Init (Authenticate with Azure CLI)
+          # 🚀 Terraform Init
           - task: AzureCLI@2
             displayName: 'Terraform Init'
             inputs:
@@ -70,7 +69,7 @@ stages:
                 echo "Validating Terraform configuration..."
                 terraform validate
 
-          # 🧾 Terraform Plan (Inject Variables — use exact pipeline variable names, case-sensitive)
+          # 🧾 Terraform Plan
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
             inputs:
@@ -81,12 +80,16 @@ stages:
               inlineScript: |
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
-                  -var="admin_ssh_public_key=$(SSH_PUBLIC_KEY)" \
-                  -var="mysql_admin_username=$(mysql_admin_username)" \
-                  -var="mysql_admin_password=$(mysql_admin_password)" \
+                  -var="admin_ssh_public_key=${SSH_PUBLIC_KEY}" \
+                  -var="mysql_admin_username=${MYSQL_ADMIN_USERNAME}" \
+                  -var="mysql_admin_password=${MYSQL_ADMIN_PASSWORD}" \
                   -out=tfplan
+            env:
+              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
+              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
-          # ⚙️ Terraform Apply (Auto-Approve)
+          # ⚙️ Terraform Apply
           - task: AzureCLI@2
             displayName: 'Terraform Apply'
             inputs:
@@ -97,8 +100,12 @@ stages:
               inlineScript: |
                 echo "Applying Terraform configuration..."
                 terraform apply -input=false -auto-approve tfplan
+            env:
+              MYSQL_ADMIN_USERNAME: $(MYSQL_ADMIN_USERNAME)
+              MYSQL_ADMIN_PASSWORD: $(MYSQL_ADMIN_PASSWORD)
+              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
-          # 📤 Export and Show Terraform Outputs
+          # 📤 Show Terraform Outputs
           - task: AzureCLI@2
             displayName: 'Show Terraform Outputs'
             inputs:
@@ -111,7 +118,6 @@ stages:
                 echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
                 echo "=========================================="
                 echo ""
-
                 terraform output -json | tee terraform-outputs.json
 
                 FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "N/A")
