@@ -36,14 +36,29 @@ stages:
           # 🔍 Debug variable presence
           - bash: |
               echo "DEBUG: checking variable lengths (0 = missing)"
-              echo "MY_SQL_ADMIN_USERNAME length: ${MY_SQL_ADMIN_USERNAME}"
-              echo "MY_SQL_ADMIN_PASSWORD length: ${MY_SQL_ADMIN_PASSWORD}"
+              echo "MY_SQL_ADMIN_USERNAME length: ${#MY_SQL_ADMIN_USERNAME}"
+              echo "MY_SQL_ADMIN_PASSWORD length: ${#MY_SQL_ADMIN_PASSWORD}"
               echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
             displayName: 'Debug: Variable Presence Check'
             env:
               MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
               MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
               SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
+
+          # 🛡 Pre-flight: Validate MySQL Admin Username
+          - bash: |
+              echo "Validating MySQL admin username..."
+              USERNAME="$MY_SQL_ADMIN_USERNAME"
+              # Must contain only letters, numbers, underscores, max 16 chars
+              if [[ ! "$USERNAME" =~ ^[a-zA-Z0-9_]{1,16}$ ]]; then
+                echo "❌ Invalid MySQL admin username: '$USERNAME'"
+                echo "Username must only contain letters, numbers, underscores, max 16 characters."
+                exit 1
+              fi
+              echo "✅ MySQL admin username is valid: '$USERNAME'"
+            displayName: 'Pre-flight: Validate MySQL Admin Username'
+            env:
+              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
 
           # 🚀 Terraform Init
           - task: AzureCLI@2
@@ -79,10 +94,12 @@ stages:
               workingDirectory: '$(workingDirectory)'
               inlineScript: |
                 echo "Creating Terraform execution plan..."
+                
+                # Pass variables to Terraform
                 terraform plan -input=false \
+                  -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
                   -var="mysql_admin_username=$MY_SQL_ADMIN_USERNAME" \
                   -var="mysql_admin_password=$MY_SQL_ADMIN_PASSWORD" \
-                  -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
                   -out=tfplan
             env:
               MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
@@ -117,6 +134,8 @@ stages:
                 echo "=========================================="
                 echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
                 echo "=========================================="
+                echo ""
+
                 if terraform output -json > terraform-outputs.json 2>/dev/null; then
                   echo "✅ Terraform outputs file generated."
                 else
@@ -131,6 +150,9 @@ stages:
                 echo "📍 Frontend Public IP: $FRONTEND_IP"
                 echo "📍 Backend Public IP: $BACKEND_IP"
                 echo "📍 MySQL FQDN: $MYSQL_FQDN"
+                echo ""
+                echo "=========================================="
+                echo "   Update ansible/inventory.ini & vars"
                 echo "=========================================="
 
           # 📦 Publish Terraform Outputs
