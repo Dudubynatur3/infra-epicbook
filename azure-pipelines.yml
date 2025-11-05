@@ -45,6 +45,17 @@ stages:
               MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
               SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
+          # 📝 Generate secret.tfvars file
+          - bash: |
+              echo "Generating secret.tfvars with password..."
+              cat <<EOF > secret.tfvars
+mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
+EOF
+              echo "secret.tfvars created."
+            displayName: 'Generate secret terraform.tfvars'
+            env:
+              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
+
           # 🚀 Terraform Init
           - task: AzureCLI@2
             displayName: 'Terraform Init'
@@ -69,17 +80,6 @@ stages:
                 echo "Validating Terraform configuration..."
                 terraform validate
 
-          # 📝 Generate Secret TFVARS
-          - bash: |
-              echo "Generating secret.tfvars with password..."
-              cat <<EOF > secret.tfvars
-mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
-EOF
-              echo "secret.tfvars created."
-            displayName: 'Generate secret terraform.tfvars'
-            env:
-              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
-
           # 🧾 Terraform Plan
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
@@ -91,11 +91,13 @@ EOF
               inlineScript: |
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
-                  -var-file=terraform.auto.tfvars \
+                  -var="mysql_admin_username=$MY_SQL_ADMIN_USERNAME" \
+                  -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
                   -var-file=secret.tfvars \
                   -out=tfplan
             env:
-              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
+              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
+              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
           # ⚙️ Terraform Apply
           - task: AzureCLI@2
@@ -107,9 +109,10 @@ EOF
               workingDirectory: '$(workingDirectory)'
               inlineScript: |
                 echo "Applying Terraform configuration..."
-                terraform apply -input=false -auto-approve -var-file=terraform.auto.tfvars -var-file=secret.tfvars tfplan
+                terraform apply -input=false -auto-approve tfplan
             env:
-              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
+              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
+              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
           # 📤 Show Terraform Outputs
           - task: AzureCLI@2
