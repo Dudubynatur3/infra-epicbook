@@ -35,15 +35,15 @@ stages:
 
           # 🔍 Debug variable presence
           - bash: |
-              echo "DEBUG: checking variable values"
-              echo "MY_SQL_ADMIN_USERNAME=${MY_SQL_ADMIN_USERNAME}"
-              echo "MY_SQL_ADMIN_PASSWORD length=${#MY_SQL_ADMIN_PASSWORD}"
-              echo "SSH_PUBLIC_KEY length=${#SSH_PUBLIC_KEY}"
+              echo "DEBUG: checking variable lengths (0 = missing)"
+              echo "MY_SQL_ADMIN_USERNAME length: ${MY_SQL_ADMIN_USERNAME}"
+              echo "MY_SQL_ADMIN_PASSWORD length: ${MY_SQL_ADMIN_PASSWORD}"
+              echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
             displayName: 'Debug: Variable Presence Check'
             env:
-              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
-              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
-              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
+              MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
+              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
+              SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
           # 🚀 Terraform Init
           - task: AzureCLI@2
@@ -69,6 +69,17 @@ stages:
                 echo "Validating Terraform configuration..."
                 terraform validate
 
+          # 📝 Generate Secret TFVARS
+          - bash: |
+              echo "Generating secret.tfvars with password..."
+              cat <<EOF > secret.tfvars
+mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
+EOF
+              echo "secret.tfvars created."
+            displayName: 'Generate secret terraform.tfvars'
+            env:
+              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
+
           # 🧾 Terraform Plan
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
@@ -78,22 +89,12 @@ stages:
               scriptLocation: 'inlineScript'
               workingDirectory: '$(workingDirectory)'
               inlineScript: |
-                echo "=========================================="
-                echo "           Running Terraform Plan"
-                echo "=========================================="
-
-                # export variables as TF_VAR_* so Terraform picks them up
-                export TF_VAR_admin_ssh_public_key="${SSH_PUBLIC_KEY}"
-                export TF_VAR_mysql_admin_username="${MY_SQL_ADMIN_USERNAME}"
-                export TF_VAR_mysql_admin_password="${MY_SQL_ADMIN_PASSWORD}"
-
-                echo "DEBUG: TF_VAR_mysql_admin_username=${TF_VAR_mysql_admin_username}"
-                echo "DEBUG: TF_VAR_mysql_admin_password length=${#TF_VAR_mysql_admin_password}"
-
-                terraform plan -input=false -out=tfplan
+                echo "Creating Terraform execution plan..."
+                terraform plan -input=false \
+                  -var-file=terraform.auto.tfvars \
+                  -var-file=secret.tfvars \
+                  -out=tfplan
             env:
-              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
-              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
               MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
 
           # ⚙️ Terraform Apply
@@ -105,18 +106,9 @@ stages:
               scriptLocation: 'inlineScript'
               workingDirectory: '$(workingDirectory)'
               inlineScript: |
-                echo "=========================================="
-                echo "           Running Terraform Apply"
-                echo "=========================================="
-
-                export TF_VAR_admin_ssh_public_key="${SSH_PUBLIC_KEY}"
-                export TF_VAR_mysql_admin_username="${MY_SQL_ADMIN_USERNAME}"
-                export TF_VAR_mysql_admin_password="${MY_SQL_ADMIN_PASSWORD}"
-
-                terraform apply -input=false -auto-approve tfplan
+                echo "Applying Terraform configuration..."
+                terraform apply -input=false -auto-approve -var-file=terraform.auto.tfvars -var-file=secret.tfvars tfplan
             env:
-              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
-              MY_SQL_ADMIN_USERNAME: $(MY_SQL_ADMIN_USERNAME)
               MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
 
           # 📤 Show Terraform Outputs
