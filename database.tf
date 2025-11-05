@@ -1,70 +1,49 @@
-# ===================================================================
-# DATABASE CONFIGURATION - Azure MySQL Flexible Server
-# ===================================================================
-
-# Random suffix for unique MySQL name
-resource "random_string" "suffix" {
-  length  = 8
-  special = false
-  upper   = false
+# Private DNS Zone for MySQL
+resource "azurerm_private_dns_zone" "mysql" {
+  name                = "epicbook-mysql.mysql.database.azure.com"
+  resource_group_name = azurerm_resource_group.main.name
 }
 
-# MySQL Flexible Server
+# Link DNS Zone to VNet
+resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
+  name                  = "mysql-vnet-link"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.mysql.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+}
+
+# MySQL Flexible Server - REGION CHANGED TO WEST EUROPE
 resource "azurerm_mysql_flexible_server" "main" {
-  name                   = "epicbook-mysql-${random_string.suffix.result}"
-  resource_group_name    = azurerm_resource_group.main.name
-  location               = azurerm_resource_group.main.location
-  administrator_login    = "mysqladmin"
+  name                = "epicbook-mysql-${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = "westeurope"  # CHANGED FROM var.location
+  
+  administrator_login    = var.mysql_admin_username
   administrator_password = var.mysql_admin_password
-  sku_name               = var.mysql_sku
-  version                = var.mysql_version
-
-  storage {
-    size_gb = 20
-  }
-
+  
   backup_retention_days = 7
+  
+  sku_name = "B_Standard_B1ms"
+  version  = "8.0.21"
 
-  lifecycle {
-    prevent_destroy = true
+  delegated_subnet_id = azurerm_subnet.mysql.id
+  private_dns_zone_id = azurerm_private_dns_zone.mysql.id
+
+  depends_on = [
+    azurerm_private_dns_zone_virtual_network_link.mysql
+  ]
+
+  tags = {
+    Environment = "dev"
+    Project     = "epicbook"
   }
-
-  depends_on = [azurerm_resource_group.main]
 }
 
 # MySQL Database
 resource "azurerm_mysql_flexible_database" "epicbook" {
-  name                = "epicbookdb"
+  name                = "epicbook_db"
   resource_group_name = azurerm_resource_group.main.name
   server_name         = azurerm_mysql_flexible_server.main.name
-  charset             = "utf8mb3"
-  collation           = "utf8mb3_general_ci"
-
-  depends_on = [azurerm_mysql_flexible_server.main]
+  charset             = "utf8mb4"
+  collation           = "utf8mb4_unicode_ci"
 }
-
-# Firewall Rule - Allow Azure Services
-resource "azurerm_mysql_flexible_server_firewall_rule" "azure_services" {
-  name                = "AllowAzureServices"
-  resource_group_name = azurerm_resource_group.main.name
-  server_name         = azurerm_mysql_flexible_server.main.name
-  start_ip_address    = "0.0.0.0"
-  end_ip_address      = "0.0.0.0"
-
-  depends_on = [azurerm_mysql_flexible_server.main]
-}
-
-# Firewall Rule - Allow Backend Subnet
-resource "azurerm_mysql_flexible_server_firewall_rule" "backend" {
-  name                = "AllowBackendSubnet"
-  resource_group_name = azurerm_resource_group.main.name
-  server_name         = azurerm_mysql_flexible_server.main.name
-  start_ip_address    = "10.0.2.0"
-  end_ip_address      = "10.0.2.255"
-
-  depends_on = [azurerm_mysql_flexible_server.main]
-}
-
-# ===================================================================
-# OUTPUTS
-# ===================================================================

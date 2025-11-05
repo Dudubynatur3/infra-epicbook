@@ -1,3 +1,19 @@
+# Import existing network resources
+import {
+  to = azurerm_virtual_network.main
+  id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/virtualNetworks/epicbook-vnet"
+}
+
+import {
+  to = azurerm_network_security_group.frontend
+  id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/networkSecurityGroups/frontend-nsg"
+}
+
+import {
+  to = azurerm_network_security_group.backend
+  id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/networkSecurityGroups/backend-nsg"
+}
+
 # Virtual Network
 resource "azurerm_virtual_network" "main" {
   name                = "epicbook-vnet"

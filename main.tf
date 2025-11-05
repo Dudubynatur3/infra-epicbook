@@ -1,4 +1,4 @@
-# Import existing resource group
+# Import existing resources
 import {
   to = azurerm_resource_group.main
   id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg"

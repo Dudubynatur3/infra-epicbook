@@ -1,3 +1,14 @@
+# Import existing public IPs
+import {
+  to = azurerm_public_ip.frontend
+  id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/publicIPAddresses/frontend-pip"
+}
+
+import {
+  to = azurerm_public_ip.backend
+  id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/publicIPAddresses/backend-pip"
+}
+
 # Public IP - Frontend
 resource "azurerm_public_ip" "frontend" {
   name                = "frontend-pip"
@@ -44,90 +55,74 @@ resource "azurerm_network_interface" "backend" {
   }
 }
 
-# Associate NSG to Frontend NIC
-resource "azurerm_network_interface_security_group_association" "frontend" {
-  network_interface_id      = azurerm_network_interface.frontend.id
-  network_security_group_id = azurerm_network_security_group.frontend.id
-}
-
-# Associate NSG to Backend NIC
-resource "azurerm_network_interface_security_group_association" "backend" {
-  network_interface_id      = azurerm_network_interface.backend.id
-  network_security_group_id = azurerm_network_security_group.backend.id
-}
-
-# ✅ FIXED: Frontend VM - Using variable instead of file()
+# Virtual Machine - Frontend
 resource "azurerm_linux_virtual_machine" "frontend" {
-  name                = "epicbook-frontend"
+  name                = "frontend-vm"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   size                = "Standard_B2s"
-  admin_username      = var.admin_username
+  admin_username      = "azureuser"
 
   network_interface_ids = [
     azurerm_network_interface.frontend.id,
   ]
 
   admin_ssh_key {
-    username   = var.admin_username
-    public_key = var.admin_ssh_public_key  # ✅ CHANGED FROM file() to variable
+    username   = "azureuser"
+    public_key = var.ssh_public_key
   }
-
-  disable_password_authentication = true
 
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+    storage_account_type = "Premium_LRS"
   }
 
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts"
+    sku       = "22_04-lts-gen2"
     version   = "latest"
   }
 
   tags = {
-    Environment = "Dev"
-    Project     = "EpicBook"
-    Tier        = "Frontend"
+    Environment = "dev"
+    Project     = "epicbook"
+    Role        = "frontend"
   }
 }
 
-# ✅ FIXED: Backend VM - Using variable instead of file()
+# Virtual Machine - Backend
 resource "azurerm_linux_virtual_machine" "backend" {
-  name                = "epicbook-backend"
+  name                = "backend-vm"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   size                = "Standard_B2s"
-  admin_username      = var.admin_username
+  admin_username      = "azureuser"
 
   network_interface_ids = [
     azurerm_network_interface.backend.id,
   ]
 
   admin_ssh_key {
-    username   = var.admin_username
-    public_key = var.admin_ssh_public_key  # ✅ CHANGED FROM file() to variable
+    username   = "azureuser"
+    public_key = var.ssh_public_key
   }
-
-  disable_password_authentication = true
 
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Standard_LRS"
+    storage_account_type = "Premium_LRS"
   }
 
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts"
+    sku       = "22_04-lts-gen2"
     version   = "latest"
   }
 
   tags = {
-    Environment = "Dev"
-    Project     = "EpicBook"
-    Tier        = "Backend"
+    Environment = "dev"
+    Project     = "epicbook"
+    Role        = "backend"
   }
 }
