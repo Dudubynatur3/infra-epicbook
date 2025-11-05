@@ -49,8 +49,8 @@ stages:
           - bash: |
               echo "Generating secret.tfvars with password..."
               cat <<EOF > secret.tfvars
-mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
-EOF
+              mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
+              EOF
               echo "secret.tfvars created."
             displayName: 'Generate secret terraform.tfvars'
             env:
