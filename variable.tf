@@ -22,6 +22,12 @@ variable "admin_ssh_public_key" {
   sensitive   = true
 }
 
+variable "mysql_admin_username" {
+  description = "MySQL admin username"
+  type        = string
+  default     = "mysqladmin"
+}
+
 variable "mysql_admin_password" {
   description = "MySQL admin password"
   type        = string

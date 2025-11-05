@@ -1,3 +1,10 @@
+# Random string for unique resource names
+resource "random_string" "suffix" {
+  length  = 8
+  special = false
+  upper   = false
+}
+
 # Import existing resources
 import {
   to = azurerm_resource_group.main
