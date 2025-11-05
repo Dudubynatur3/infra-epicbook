@@ -45,17 +45,6 @@ stages:
               MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
               SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
-          # 📝 Generate secret.tfvars file
-          - bash: |
-              echo "Generating secret.tfvars with password..."
-              cat <<EOF > secret.tfvars
-              mysql_admin_password = "${MY_SQL_ADMIN_PASSWORD}"
-              EOF
-              echo "secret.tfvars created."
-            displayName: 'Generate secret terraform.tfvars'
-            env:
-              MY_SQL_ADMIN_PASSWORD: $(MY_SQL_ADMIN_PASSWORD)
-
           # 🚀 Terraform Init
           - task: AzureCLI@2
             displayName: 'Terraform Init'
@@ -92,11 +81,12 @@ stages:
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
                   -var="mysql_admin_username=$MY_SQL_ADMIN_USERNAME" \
+                  -var="mysql_admin_password=$MY_SQL_ADMIN_PASSWORD" \
                   -var="admin_ssh_public_key=$SSH_PUBLIC_KEY" \
-                  -var-file=secret.tfvars \
                   -out=tfplan
             env:
               MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
+              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
               SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
           # ⚙️ Terraform Apply
@@ -112,6 +102,7 @@ stages:
                 terraform apply -input=false -auto-approve tfplan
             env:
               MY_SQL_ADMIN_USERNAME: '$(MY_SQL_ADMIN_USERNAME)'
+              MY_SQL_ADMIN_PASSWORD: '$(MY_SQL_ADMIN_PASSWORD)'
               SSH_PUBLIC_KEY: '$(SSH_PUBLIC_KEY)'
 
           # 📤 Show Terraform Outputs
@@ -126,8 +117,6 @@ stages:
                 echo "=========================================="
                 echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
                 echo "=========================================="
-                echo ""
-
                 if terraform output -json > terraform-outputs.json 2>/dev/null; then
                   echo "✅ Terraform outputs file generated."
                 else
@@ -142,9 +131,6 @@ stages:
                 echo "📍 Frontend Public IP: $FRONTEND_IP"
                 echo "📍 Backend Public IP: $BACKEND_IP"
                 echo "📍 MySQL FQDN: $MYSQL_FQDN"
-                echo ""
-                echo "=========================================="
-                echo "   Update ansible/inventory.ini & vars"
                 echo "=========================================="
 
           # 📦 Publish Terraform Outputs
