@@ -12,19 +12,18 @@ resource "azurerm_private_dns_zone_virtual_network_link" "mysql" {
   virtual_network_id    = azurerm_virtual_network.main.id
 }
 
-# MySQL Flexible Server - REGION CHANGED TO WEST EUROPE
+# MySQL Flexible Server
 resource "azurerm_mysql_flexible_server" "main" {
   name                = "epicbook-mysql-${random_string.suffix.result}"
   resource_group_name = azurerm_resource_group.main.name
-  location            = "westeurope"  # CHANGED FROM var.location
-  
+  location            = "westeurope"
+
   administrator_login    = var.mysql_admin_username
   administrator_password = var.mysql_admin_password
-  
+
   backup_retention_days = 7
-  
-  sku_name = "B_Standard_B1ms"
-  version  = "8.0.21"
+  sku_name              = var.mysql_sku
+  version               = var.mysql_version
 
   delegated_subnet_id = azurerm_subnet.mysql.id
   private_dns_zone_id = azurerm_private_dns_zone.mysql.id

@@ -1,4 +1,4 @@
-# Import existing public IPs
+# Import existing Public IPs
 import {
   to = azurerm_public_ip.frontend
   id = "/subscriptions/4498449e-cbcd-452c-9a04-69e911ee0ae4/resourceGroups/epicbook-rg/providers/Microsoft.Network/publicIPAddresses/frontend-pip"
@@ -61,14 +61,12 @@ resource "azurerm_linux_virtual_machine" "frontend" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   size                = "Standard_B2s"
-  admin_username      = "azureuser"
+  admin_username      = var.admin_username
 
-  network_interface_ids = [
-    azurerm_network_interface.frontend.id,
-  ]
+  network_interface_ids = [azurerm_network_interface.frontend.id]
 
   admin_ssh_key {
-    username   = "azureuser"
+    username   = var.admin_username
     public_key = var.admin_ssh_public_key
   }
 
@@ -97,15 +95,13 @@ resource "azurerm_linux_virtual_machine" "backend" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   size                = "Standard_B2s"
-  admin_username      = "azureuser"
+  admin_username      = var.admin_username
 
-  network_interface_ids = [
-    azurerm_network_interface.backend.id,
-  ]
+  network_interface_ids = [azurerm_network_interface.backend.id]
 
   admin_ssh_key {
-    username   = "azureuser"
-    public_key = var.ssh_public_key
+    username   = var.admin_username
+    public_key = var.admin_ssh_public_key
   }
 
   os_disk {

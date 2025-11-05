@@ -15,24 +15,25 @@ stages:
     displayName: 'Provision Infrastructure'
     jobs:
       - job: TerraformJob
-        displayName: 'Run Terraform'
+        displayName: 'Run Terraform Deployment'
         steps:
-          # ✅ NEW: Download SSH Public Key from Secure Files
+
+          # 🔐 Download SSH Public Key from Secure Files
           - task: DownloadSecureFile@1
             name: sshPublicKey
             inputs:
               secureFile: 'id_rsa.pub'
-            displayName: 'Download SSH Public Key from Secure Files'
+            displayName: 'Download SSH Public Key'
 
-          # ✅ NEW: Read SSH Key Content into Variable
+          # 🧩 Load SSH Public Key into Variable
           - bash: |
               echo "Reading SSH public key content..."
               SSH_KEY_CONTENT=$(cat $(sshPublicKey.secureFilePath))
               echo "SSH Key loaded (length: ${#SSH_KEY_CONTENT} characters)"
               echo "##vso[task.setvariable variable=SSH_PUBLIC_KEY;issecret=true]$SSH_KEY_CONTENT"
-            displayName: 'Load SSH Public Key into Variable'
+            displayName: 'Load SSH Key into Variable'
 
-          # ✅ UPDATED: Terraform Init with Azure CLI authentication
+          # 🚀 Terraform Init (Authenticate with Azure CLI)
           - task: AzureCLI@2
             displayName: 'Terraform Init'
             inputs:
@@ -44,7 +45,7 @@ stages:
                 echo "Initializing Terraform..."
                 terraform init -input=false
 
-          # ✅ UPDATED: Terraform Validate with Azure CLI authentication
+          # ✅ Validate Terraform Config
           - task: AzureCLI@2
             displayName: 'Terraform Validate'
             inputs:
@@ -56,7 +57,7 @@ stages:
                 echo "Validating Terraform configuration..."
                 terraform validate
 
-          # ✅ UPDATED: Terraform Plan with SSH Key Variable
+          # 🧾 Terraform Plan (Inject Variables)
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
             inputs:
@@ -68,9 +69,11 @@ stages:
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
                   -var="admin_ssh_public_key=$(SSH_PUBLIC_KEY)" \
+                  -var="mysql_admin_username=$(MYSQL_ADMIN_USERNAME)" \
+                  -var="mysql_admin_password=$(MYSQL_ADMIN_PASSWORD)" \
                   -out=tfplan
 
-          # ✅ UPDATED: Terraform Apply with SSH Key Variable
+          # ⚙️ Terraform Apply (Auto-Approve)
           - task: AzureCLI@2
             displayName: 'Terraform Apply'
             inputs:
@@ -82,7 +85,7 @@ stages:
                 echo "Applying Terraform configuration..."
                 terraform apply -input=false -auto-approve tfplan
 
-          # ✅ UPDATED: Show Outputs
+          # 📤 Export and Show Terraform Outputs
           - task: AzureCLI@2
             displayName: 'Show Terraform Outputs'
             inputs:
@@ -95,45 +98,22 @@ stages:
                 echo "      TERRAFORM INFRASTRUCTURE OUTPUTS"
                 echo "=========================================="
                 echo ""
-                
-                # Save outputs to JSON
+
                 terraform output -json | tee terraform-outputs.json
-                
-                echo ""
-                echo "=========================================="
-                echo "   📋 COPY THESE FOR YOUR APP PIPELINE:"
-                echo "=========================================="
-                echo ""
-                
-                # Display individual outputs
-                FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "Not available")
-                BACKEND_IP=$(terraform output -raw backend_public_ip 2>/dev/null || echo "Not available")
-                MYSQL_FQDN=$(terraform output -raw mysql_fqdn 2>/dev/null || echo "Not available")
-                
+
+                FRONTEND_IP=$(terraform output -raw frontend_public_ip 2>/dev/null || echo "N/A")
+                BACKEND_IP=$(terraform output -raw backend_public_ip 2>/dev/null || echo "N/A")
+                MYSQL_FQDN=$(terraform output -raw mysql_fqdn 2>/dev/null || echo "N/A")
+
                 echo "📍 Frontend Public IP: $FRONTEND_IP"
                 echo "📍 Backend Public IP: $BACKEND_IP"
                 echo "📍 MySQL FQDN: $MYSQL_FQDN"
                 echo ""
                 echo "=========================================="
-                echo "      UPDATE YOUR APP REPOSITORY WITH:"
-                echo "=========================================="
-                echo ""
-                echo "1. ansible/inventory.ini:"
-                echo "   [frontend]"
-                echo "   $FRONTEND_IP"
-                echo ""
-                echo "   [backend]"
-                echo "   $BACKEND_IP"
-                echo ""
-                echo "2. ansible/group_vars/backend.yml:"
-                echo "   db_host: $MYSQL_FQDN"
-                echo ""
-                echo "3. ansible/group_vars/frontend.yml:"
-                echo "   backend_api_url: http://$BACKEND_IP:5000"
-                echo ""
+                echo "   Update ansible/inventory.ini & vars"
                 echo "=========================================="
 
-          # ✅ NEW: Publish Outputs as Artifact
+          # 🗂️ Publish Terraform Outputs Artifact
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Terraform Outputs'
             inputs:

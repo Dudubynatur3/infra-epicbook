@@ -32,7 +32,7 @@ variable "mysql_admin_password" {
   description = "MySQL admin password"
   type        = string
   sensitive   = true
-  default     = "P@ssw0rd1234!"
+  # no default in production — pipeline should provide this as a secret
 }
 
 variable "mysql_sku" {

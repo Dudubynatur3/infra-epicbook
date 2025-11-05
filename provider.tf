@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.0"
-  
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -14,7 +14,7 @@ terraform {
 
   backend "azurerm" {
     resource_group_name  = "terraform-state-rg"
-    storage_account_name = "tfstateepicbook"
+    storage_account_name = "tfstateepikbook"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
   }
