@@ -18,7 +18,7 @@ stages:
         displayName: 'Run Terraform Deployment'
         steps:
 
-          # 🔐 Download SSH Public Key from Secure Files
+          # 🔐 Download SSH Public Key from Secure Files (keeps your existing secure file usage)
           - task: DownloadSecureFile@1
             name: sshPublicKey
             inputs:
@@ -32,6 +32,19 @@ stages:
               echo "SSH Key loaded (length: ${#SSH_KEY_CONTENT} characters)"
               echo "##vso[task.setvariable variable=SSH_PUBLIC_KEY;issecret=true]$SSH_KEY_CONTENT"
             displayName: 'Load SSH Key into Variable'
+
+          # 🔍 DEBUG: confirm pipeline variables are present (prints lengths only)
+          # (temporary — remove after first successful run)
+          - bash: |
+              echo "DEBUG: checking variable lengths (0 = missing)"
+              echo "MYSQL_ADMIN_USERNAME length: ${#MYSQL_ADMIN_USERNAME}"
+              echo "MYSQL_ADMIN_PASSWORD length: ${#MYSQL_ADMIN_PASSWORD}"
+              echo "SSH_PUBLIC_KEY length: ${#SSH_PUBLIC_KEY}"
+            displayName: 'Debug: Variable Presence Check'
+            env:
+              MYSQL_ADMIN_USERNAME: $(mysql_admin_username)
+              MYSQL_ADMIN_PASSWORD: $(mysql_admin_password)
+              SSH_PUBLIC_KEY: $(SSH_PUBLIC_KEY)
 
           # 🚀 Terraform Init (Authenticate with Azure CLI)
           - task: AzureCLI@2
@@ -57,7 +70,7 @@ stages:
                 echo "Validating Terraform configuration..."
                 terraform validate
 
-          # 🧾 Terraform Plan (Inject Variables)
+          # 🧾 Terraform Plan (Inject Variables — use exact pipeline variable names, case-sensitive)
           - task: AzureCLI@2
             displayName: 'Terraform Plan'
             inputs:
@@ -69,8 +82,8 @@ stages:
                 echo "Creating Terraform execution plan..."
                 terraform plan -input=false \
                   -var="admin_ssh_public_key=$(SSH_PUBLIC_KEY)" \
-                  -var="mysql_admin_username=$(MYSQL_ADMIN_USERNAME)" \
-                  -var="mysql_admin_password=$(MYSQL_ADMIN_PASSWORD)" \
+                  -var="mysql_admin_username=$(mysql_admin_username)" \
+                  -var="mysql_admin_password=$(mysql_admin_password)" \
                   -out=tfplan
 
           # ⚙️ Terraform Apply (Auto-Approve)
